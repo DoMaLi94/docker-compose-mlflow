@@ -1,0 +1,91 @@
+services:
+    minio:
+        restart: always
+        image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
+        container_name: mlflow_s3
+        expose:
+            - "9000"
+        command: ["server", "/data", "--console-address", ":9001"]
+        networks:
+            - storage
+        environment:
+            - MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID}
+            - MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY}
+        volumes:
+            - minio_data:/data
+
+    create_mlflow_bucket:
+        image: quay.io/minio/mc:RELEASE.2025-07-21T05-28-08Z
+        depends_on:
+            - minio
+        container_name: create_mlflow_bucket
+        networks: 
+            - storage
+        entrypoint: >
+            /bin/sh -c "
+            until (/usr/bin/mc alias set minio http://minio:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY}) do echo '...waiting...' && sleep 1; done;
+            /usr/bin/mc mb --ignore-existing minio/${MLFLOW_BUCKET_NAME};
+            /usr/bin/mc anonymous set public minio/${MLFLOW_BUCKET_NAME};
+            /usr/bin/mc mb --ignore-existing minio/${DATA_REPO_BUCKET_NAME};
+            /usr/bin/mc anonymous set download minio/${DATA_REPO_BUCKET_NAME};
+            exit 0; "
+
+    postgres:
+        restart: always
+        image: postgres:17.6
+        container_name: mlflow_db
+        expose:
+            - "5432"
+        networks:
+            - backend
+        environment:
+            - POSTGRES_DB=${POSTGRES_DATABASE}
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+
+    mlflow:
+        restart: always
+        build: ./mlflow
+        image: mlflow_server
+        container_name: mlflow_server
+        expose:
+            - "5000"
+        networks:
+            - frontend
+            - backend
+            - storage
+        environment:
+            - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        command: mlflow server --backend-store-uri postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DATABASE} --default-artifact-root s3://mlflow/ --host 0.0.0.0        
+
+    nginx:
+        restart: always
+        build: ./nginx
+        image: mlflow_nginx
+        container_name: mlflow_nginx
+        ports:
+            - "80:80"
+            - "9000:9000"
+            - "9001:9001"
+        networks:
+            - frontend
+            - storage
+        depends_on:
+            - mlflow
+            - minio
+
+networks:
+    frontend:
+        driver: bridge
+    backend:
+        driver: bridge
+    storage:
+        driver: bridge
+
+volumes:
+    postgres_data:
+    minio_data:
