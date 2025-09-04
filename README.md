@@ -59,6 +59,14 @@ Based on **"Practical Deep Learning at Scale with MLFlow"** by Packt Publishing 
 Create a `.env` file in the root directory:
 
 ```env
+# Image versions
+MINIO_VERSION=RELEASE.2025-07-23T15-54-02Z
+MINIO_MC_VERSION=RELEASE.2025-07-21T05-28-08Z
+POSTGRES_VERSION=17.6
+PYTHON_VERSION=3.11-slim
+MLFLOW_VERSION=3.3.1
+NGINX_VERSION=1.29-alpine
+
 # MinIO configuration
 AWS_ACCESS_KEY_ID=minio
 AWS_SECRET_ACCESS_KEY=minio123
@@ -73,12 +81,37 @@ POSTGRES_PASSWORD=mlflow
 
 ### Variable Explanations
 
+#### Image Versions
+- **MINIO_VERSION**: MinIO server version tag (S3-compatible object storage)
+- **MINIO_MC_VERSION**: MinIO client version tag (for bucket initialization)
+- **POSTGRES_VERSION**: PostgreSQL database version tag
+- **PYTHON_VERSION**: Python base image version for MLflow container
+- **MLFLOW_VERSION**: MLflow package version to install
+- **NGINX_VERSION**: Nginx reverse proxy version tag
+
+#### Service Configuration
 - **AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY**: MinIO credentials for S3-compatible storage
 - **MLFLOW_BUCKET_NAME**: Stores MLflow artifacts (models, plots, metrics)
 - **DATA_REPO_BUCKET_NAME**: Additional bucket for datasets and custom files
 - **POSTGRES_DATABASE**: Database name for MLflow metadata storage
 - **POSTGRES_USER**: PostgreSQL username for MLflow database access
 - **POSTGRES_PASSWORD**: PostgreSQL password for MLflow database access
+
+### Version Management
+
+All service versions are centrally managed through environment variables in the `.env` file. To update any service version:
+
+1. **Edit the `.env` file** with your desired versions
+2. **Rebuild the affected services**:
+   ```bash
+   # Rebuild specific services
+   docker compose build mlflow nginx
+   
+   # Or rebuild all services
+   docker compose up --build
+   ```
+
+> **Note**: When updating versions, always check compatibility between MLflow and Python versions, and review the changelog for breaking changes.
 
 ### Default Network Ports
 

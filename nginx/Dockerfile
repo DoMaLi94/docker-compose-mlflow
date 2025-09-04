@@ -1,4 +1,6 @@
-FROM nginx:1.29-alpine
+ARG NGINX_VERSION=1.29-alpine
+
+FROM nginx:${NGINX_VERSION}
 
 # Remove default Nginx config
 RUN rm /etc/nginx/nginx.conf

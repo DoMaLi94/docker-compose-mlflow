@@ -1,7 +1,7 @@
 services:
     minio:
         restart: always
-        image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
+        image: quay.io/minio/minio:${MINIO_VERSION}
         container_name: mlflow_s3
         expose:
             - "9000"
@@ -15,7 +15,7 @@ services:
             - minio_data:/data
 
     create_mlflow_bucket:
-        image: quay.io/minio/mc:RELEASE.2025-07-21T05-28-08Z
+        image: quay.io/minio/mc:${MINIO_MC_VERSION}
         depends_on:
             - minio
         container_name: create_mlflow_bucket
@@ -32,7 +32,7 @@ services:
 
     postgres:
         restart: always
-        image: postgres:17.6
+        image: postgres:${POSTGRES_VERSION}
         container_name: mlflow_db
         expose:
             - "5432"
@@ -47,7 +47,11 @@ services:
 
     mlflow:
         restart: always
-        build: ./mlflow
+        build: 
+            context: ./mlflow
+            args:
+                PYTHON_VERSION: ${PYTHON_VERSION}
+                MLFLOW_VERSION: ${MLFLOW_VERSION}
         image: mlflow_server
         container_name: mlflow_server
         expose:
@@ -64,7 +68,10 @@ services:
 
     nginx:
         restart: always
-        build: ./nginx
+        build: 
+            context: ./nginx
+            args:
+                NGINX_VERSION: ${NGINX_VERSION}
         image: mlflow_nginx
         container_name: mlflow_nginx
         ports:
